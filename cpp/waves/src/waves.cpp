@@ -1,26 +1,13 @@
 #include <iostream>
+#include <fstream>
+
 #include <cmath>
 #include <queue>
 #include <vector>
+
 #include <omp.h>
-#include <fstream>
-#include "tqdm/tqdm.h"
 
-struct GridParams{
-    double Lx, Ly, Lz;
-    double hx, hy, hz;
-    int Nx, Ny, Nz;
-
-    GridParams(){}
-    GridParams(double L, int N){
-        Lx = Ly = Lz = L;
-        Nx = Ny = Nz = N-1;
-
-        hx = Lx/(Nx+1);
-        hy = Ly/(Ny+1);
-        hz = Lz/(Nz+1);
-    }
-};
+#include "GridFunc.h"
 
 struct SimulationParams{
     GridParams grid;
@@ -46,39 +33,6 @@ struct SimulationParams{
         this->isPeriodicZ = isPeriodicZ;
     }
 } params;
-
-class GridFunc{
-    GridParams grid;
-    std::vector<double> data;
-    int size;
-
-    public:
-
-    double* GetData(){return &data[0];}
-
-    int GetSize(){return size;}
-
-    GridFunc(const GridParams& grid){
-        this->grid = grid;
-
-        size = (grid.Nx+1) * (grid.Ny+1) * (grid.Nz+1);
-        
-        if(size > 0){
-            data.resize(size);
-            std::fill(data.begin(),data.end(),'\0');
-        }
-    }
-
-    GridFunc(){}
-
-    inline double& operator()(int i, int j,int k){
-        return data[k + (grid.Nz+1)*(j + (grid.Ny+1) * i)];
-    }
-
-    GridParams& GetGrid(){
-        return grid;
-    }
-};
 
 inline double phi(int i, int j, int k){
     return sin(
