@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-OMP_NUM_THREADS=4
+# OMP_NUM_THREADS=4
 
-# MPICXX_FLAGS="-O3 -fopenmp"
-MPICXX_FLAGS=""
+# MPICXX_FLAGS="-O3"
+MPICXX_FLAGS="-O3 -fopenmp"
 MPIRUN_FLAGS=""
 
 MPICXX=mpicxx

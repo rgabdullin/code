@@ -1,4 +1,6 @@
 #include <mpi.h>
+#include <omp.h>
+
 #include <iomanip>
 #include <iostream>
 #include <vector>
@@ -280,6 +282,8 @@ int main(int argc, char* argv[]){
 
     if(rank == 0){
         std::cout << "Running" << std::endl;
+        std::cout << "Num procs: " << omp_get_num_procs() << std::endl;
+        std::cout << "Num threads: " << omp_get_num_threads() << std::endl;
     }
     for(int n = 0; n < frames; n++){
         if(rank == 0){
@@ -298,6 +302,7 @@ int main(int argc, char* argv[]){
 
         double linf_metrics = 0;
 
+        #pragma omp parallel for
         for(int idx = 0; idx < Dx * Dy * Dz; ++idx){
             int k = idx % Dz,
                 j = (idx / Dz) % Dy,
