@@ -32,6 +32,10 @@
         "tuple": "cpp",
         "utility": "cpp",
         "queue": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "complex": "cpp",
+        "cstdarg": "cpp",
+        "ctime": "cpp",
+        "iomanip": "cpp"
     }
 }
