@@ -30,4 +30,4 @@ ${MPICXX} ${MPICXX_FLAGS} -o ${BIN_PATH}/mpiwaves ${OBJ_PATH}/*.o
 
 echo "Run"
 
-time mpirun -n $1 ${BIN_PATH}/mpiwaves $2
+time mpirun -n $(($2*$3*$4)) ${BIN_PATH}/mpiwaves $1 $2 $3 $4 1

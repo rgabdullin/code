@@ -113,7 +113,7 @@ public:
         // мы уже тут меняем данные местами, а ниже пересылки не произойдет
 
         // грани OX
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for(int j = 0; j < Dy; ++j){
             for(int k = 0; k < Dz; ++k){
                 int i = 0, target = (Gx > 1? 0: 1);
@@ -124,7 +124,7 @@ public:
         }
 
         // грани OY
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for(int i = 0; i < Dx; ++i){
             for(int k = 0; k < Dz; ++k){
                 int j = 0, target = (Gy > 1? 2: 3);
@@ -135,7 +135,7 @@ public:
         }
 
         // грани OZ
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for(int i = 0; i < Dx; ++i){
             for(int j = 0; j < Dy; ++j){
                 int k = 0, target = (Gz > 1? 4: 5);
@@ -156,6 +156,9 @@ public:
         // получаем наш ранк и координаты
         MPI_Comm_rank(comm, &my_rank);
         MPI_Cart_coords(comm, my_rank, 3, m_crd);
+
+        // if((m_crd[0] != Bx) || (m_crd[1] != By) || (m_crd[2] != Bz))
+        //     std::cerr << "WAT?????" << std::endl;
 
         // целевые узлы MPI
         int target[6];
@@ -186,6 +189,8 @@ public:
         for(int axis = 0; axis < 3; axis++){
             // вычисляем четность
             int tp = (m_crd[axis]) % 2;
+            // int tp = (axis == 0? Bx : (axis == 1? By : Bz)) % 2;
+
             for(int tmp = 0; tmp < 2; tmp++){
                 tp = 1 - tp;
 
@@ -194,20 +199,21 @@ public:
 
                 // вычисляем теги отправки и приема
                 // в них зашиты номер ноды, ось, направление
-                int send_tag = my_rank * 100 + axis * 10 + tp;
-                int recv_tag = target[target_idx] * 100 + axis * 10 + (1-tp);
+                int send_tag = 100000 + my_rank * 100 + axis * 10 + tp;
+                int recv_tag = 100000 + target[target_idx] * 100 + axis * 10 + (1-tp);
                 
                 // если отправка не на себя, то отправляем
-                if(my_rank != target[target_idx])                    
+                if(my_rank != target[target_idx]){                
                     MPI_Sendrecv_replace(&extern_data[target_idx][0],extern_data[target_idx].size(),
                         MPI_DOUBLE,target[target_idx],send_tag,target[target_idx],recv_tag,
                         comm,&status);
+                }
             }
         }
     }
 
     // возвращает данные в локальной индексации
-    inline double GetLocalIndex(int i, int j, int k){
+    double GetLocalIndex(int i, int j, int k){
         // грани OX и основное значение
         if((j >= 0)&&(j<Dy)&&(k>=0)&&(k<Dz)){
             if(i == -1)
@@ -237,7 +243,7 @@ public:
     }
 
     // устанавливает значение в локальной индексации
-    inline bool SetLocalIndex(int i, int j, int k, double v){
+    bool SetLocalIndex(int i, int j, int k, double v){
         // если мы вне нужной области, то выплевываем false
         if((i < 0)||(i >= Dx)||(j < 0)||(j >= Dy)||(k < 0)||(k >= Dz))
             return false;
@@ -255,8 +261,8 @@ public:
     int GetO(int i) {return (i == 0? Ox : (i == 1? Oy : Oz));}
 
     // установка и получение значения в глобальной индексации
-    inline double Get(int i, int j, int k) {return GetLocalIndex(i - Ox, j - Oy, k - Oz);}
-    inline bool Set(int i, int j, int k, double v) {return SetLocalIndex(i - Ox, j - Oy, k - Oz, v);}    
+    double Get(int i, int j, int k) {return GetLocalIndex(i - Ox, j - Oy, k - Oz);}
+    bool Set(int i, int j, int k, double v) {return SetLocalIndex(i - Ox, j - Oy, k - Oz, v);}    
 };
 
 // отладочная функция для сетки печати на экран
@@ -279,10 +285,10 @@ void PrintMPIGridFunc(MPI_Comm comm, MPIGridFunc& u, int print_rank = -1, bool e
     // трехмерный цикл для печати
     for(int i = 0 - ext; i < u.GetN(0) + ext; i++){
         if(print_rank == rank)
-            std::cout << "[" << std::endl;
+            std::cerr << "[" << std::endl;
         for(int j = 0 - ext; j < u.GetN(1) + ext; j++){
             if(print_rank == rank)
-                std::cout << "\t";
+                std::cerr << "\t";
             for(int k = 0 - ext; k < u.GetN(2) + ext; k++){
                 // получаем значение сетки и подменяем его на очень маленькое,
                 // если оно равно nan
@@ -299,18 +305,19 @@ void PrintMPIGridFunc(MPI_Comm comm, MPIGridFunc& u, int print_rank = -1, bool e
                 // печатаем значение или вопросик, если его был nan
                 if(print_rank == rank){
                     if(glob_value == -1e300)
-                        std::cout << "?" << "\t";
+                        std::cerr << "?" << "\t";
                     else
-                        std::cout << std::setprecision(3) << glob_value << "\t";
+                        std::cerr << glob_value << "\t";
                 }
             }
             if(print_rank == rank)
-                std::cout << std::endl;
+                std::cerr << std::endl;
         }
         if(print_rank == rank)
-            std::cout << "]" << std::endl;
+            std::cerr << "]" << std::endl;
     }
 }
+
 
 /*
 В варианте 2:
@@ -392,13 +399,9 @@ int main(int argc, char* argv[]){
     MPI_Comm_rank(comm, &rank);
     MPI_Cart_coords(comm, rank, 3, coord);
 
-
     // парсим 5 аргумент командной строки, если он есть
     bool compute_metrics = false;
     if(argc > 5) compute_metrics = bool(atoi(argv[5]));
-
-    if(rank == 0)
-        std::cout << "Compute metrics: " << compute_metrics << std::endl;
 
     // парсим размер сетки численного метода из 1го аргумента
     int N;
@@ -407,19 +410,22 @@ int main(int argc, char* argv[]){
 
     if(rank == 0){
         std::cout << "N = " << N << std::endl;
+        std::cout << "Gx = " << dim[0] << std::endl;
+        std::cout << "Gy = " << dim[1] << std::endl;
+        std::cout << "Gz = " << dim[2] << std::endl;
 
         // кидаем ошибку, если вычислительная сетка не делится на размеры MPI сетки
         if(N % dim[0]){
             std::cout << N << " %% " << dim[0] << " != 0" << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, 1);
+            MPI_Abort(comm, 1);
         }
         if(N % dim[1]){
             std::cout << N << " %% " << dim[1] << " != 0" << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, 1);
+            MPI_Abort(comm, 1);
         }
         if(N % dim[2]){
             std::cout << N << " %% " << dim[2] << " != 0" << std::endl;
-            MPI_Abort(MPI_COMM_WORLD, 1);
+            MPI_Abort(comm, 1);
         }
     }
 
@@ -442,7 +448,7 @@ int main(int argc, char* argv[]){
 
     // инициализируем дискретизацию по времени
     int frames = 20;
-    double ht = 0.001;
+    double ht = 0.005;
 
     if(rank == 0)
         std::cout << "T = " << ht * frames << std::endl;
@@ -502,21 +508,20 @@ int main(int argc, char* argv[]){
         loc_t1 = MPI_Wtime();
 
         double metrics = 0;
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for(int i = 0; i < Dx; ++i){
             for(int j = 0; j < Dy; ++j)
                 for(int k = 0; k < Dz; ++k){
                     // готовим переменную для посчитанного значения
-                    double value;
+                    double value = 0;
+                    double x = hx * (Ox + i), 
+                           y = hy * (Oy + j),
+                           z = hz * (Oz + k);
 
                     // если это нулевой кадр, то вычисляем значение
                     // из начального условия u[0](i,j,k) = phi(i,j,k)
-                    if(frame == 0){
-                        double x = (Ox + i) * hx, 
-                            y = (Oy + j) * hy,
-                            z = (Oz + k) * hz;
+                    if(frame == 0)
                         value = Phi(x,y,z);
-                    }
 
                     // если это первый кадр, то вычисляем значение
                     // из начального условия du/dt[0](i,j,k) = 0
@@ -541,27 +546,25 @@ int main(int argc, char* argv[]){
                     // проверяем граничные условия
                     // для всех условий первого рода явно задаем значение равное нулю
                     // напомним, что в своей сетке мы отрезали правые границы
-                    if(!is_periodic_x && (i == 0))
+                    if(!is_periodic_x && (x == 0))
                         value = 0;
-                    if(!is_periodic_y && (j == 0))
+                    if(!is_periodic_y && (y == 0))
                         value = 0;
-                    if(!is_periodic_z && (k == 0))
+                    if(!is_periodic_z && (z == 0))
                         value = 0;
 
                     // сохраняем значение в сетку
-                    u[n].SetLocalIndex(i,j,k,value);
+                    bool flag = u[n].SetLocalIndex(i,j,k,value);
 
                     if(compute_metrics){
-                        double x = hx * (i + Ox), y = hy * (j + Oy), z = hz * (k + Oz);
-                        double loc_metrics = fabs(u[n].GetLocalIndex(i,j,k) - UAnalytics(x,y,z,frame*ht));
-                        
+                        double loc_metrics = fabs(value - UAnalytics(x,y,z,frame*ht));
                         // если значение метрики меньше, чем разность в текущей точке
                         // то меняем метрику
                         // добавляем разницу -- это косыль, чтобы использовать допустимую операцию для atomic
                         double metrics_delta = loc_metrics - metrics;
                         if(metrics_delta > 0){
-                            #pragma omp atomic
-                            metrics += metrics_delta;
+                            // #pragma omp atomic
+                            metrics = loc_metrics;
                         }
                     }
                 }
@@ -574,12 +577,15 @@ int main(int argc, char* argv[]){
 
         // выполняем синхронизацию, пересылая 6 граней между блоками
         loc_t1 = MPI_Wtime();
+
         u[n].SyncMPI(comm);
+
         loc_t2 = MPI_Wtime();
         if(rank == 0)
             std::cerr << "\tSync: " << loc_t2 - loc_t1 << std::endl;
-    
+
         // теперь вычисляем глобальную метрику с помощью Reduce
+
         double result = 0;
         MPI_Reduce(&metrics,&result,1,MPI_DOUBLE,MPI_MAX,0,comm);            
         loc_t2 = MPI_Wtime();
