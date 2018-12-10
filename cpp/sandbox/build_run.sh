@@ -4,6 +4,6 @@ set -e
 # MPIRUN_FLAGS="--tag-output"
 MPIRUN_FLAGS=""
 
-mpicxx -o mpi1 ./mpi1.cpp
+mpicxx -o $1 ./$1.cpp
 
-mpirun $MPIRUN_FLAGS -n $1 ./mpi1
+mpirun $MPIRUN_FLAGS -n $2 ./$1
