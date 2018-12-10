@@ -113,7 +113,7 @@ public:
         // мы уже тут меняем данные местами, а ниже пересылки не произойдет
 
         // грани OX
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for(int j = 0; j < Dy; ++j){
             for(int k = 0; k < Dz; ++k){
                 int i = 0, target = (Gx > 1? 0: 1);
@@ -124,7 +124,7 @@ public:
         }
 
         // грани OY
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for(int i = 0; i < Dx; ++i){
             for(int k = 0; k < Dz; ++k){
                 int j = 0, target = (Gy > 1? 2: 3);
@@ -135,7 +135,7 @@ public:
         }
 
         // грани OZ
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for(int i = 0; i < Dx; ++i){
             for(int j = 0; j < Dy; ++j){
                 int k = 0, target = (Gz > 1? 4: 5);
@@ -508,7 +508,7 @@ int main(int argc, char* argv[]){
         loc_t1 = MPI_Wtime();
 
         double metrics = 0;
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for(int i = 0; i < Dx; ++i){
             for(int j = 0; j < Dy; ++j)
                 for(int k = 0; k < Dz; ++k){
@@ -563,8 +563,8 @@ int main(int argc, char* argv[]){
                         // добавляем разницу -- это косыль, чтобы использовать допустимую операцию для atomic
                         double metrics_delta = loc_metrics - metrics;
                         if(metrics_delta > 0){
-                            // #pragma omp atomic
-                            metrics = loc_metrics;
+                            #pragma omp atomic
+                            metrics += metrics_delta;
                         }
                     }
                 }
